@@ -1,0 +1,12 @@
+import {readFileSync,writeFileSync} from 'node:fs';
+import {resolve,extname} from 'node:path';
+const root=resolve(import.meta.dirname,'..'),dist=resolve(root,'dist');
+const read=name=>readFileSync(resolve(dist,name),'utf8');
+const mime={'.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp'};
+const data=path=>`data:${mime[extname(path)]};base64,${readFileSync(resolve(dist,path)).toString('base64')}`;
+let css=read('styles.css').replace(/url\((assets\/[^)]+)\)/g,(_,p)=>`url(${data(p)})`);
+let js=read('config.js').replaceAll('export const','const')+'\n'+read('poll-schema.js').replaceAll('export const','const').replaceAll('export function','function')+'\n'+read('app.js').replace(/^import .*;\n/gm,'');
+let html=read('index.html').replace('<link rel="stylesheet" href="styles.css">',`<style>${css}</style>`).replace('<script src="app.js" type="module"></script>','').replace(/(src|href)="(assets\/[^"]+)"/g,(_,attr,path)=>`${attr}="${data(path)}"`);
+html=html.replace('</body>',`<script type="module">\n${js}\n</script></body>`);
+writeFileSync(resolve(root,'review.html'),html);
+console.log('Created standalone site/review.html. Collection stays unavailable without the server; no sample results are invented.');

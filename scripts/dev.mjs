@@ -1,0 +1,13 @@
+import {createServer} from 'node:http';
+import {readFileSync,existsSync,mkdirSync} from 'node:fs';
+import {resolve,extname} from 'node:path';
+import {Readable} from 'node:stream';
+import worker from '../server/worker.js';
+import {openDatabase} from '../server/local-db.js';
+const root=resolve(import.meta.dirname,'..'),publicDir=resolve(root,'dist'),state=resolve(root,'.local');mkdirSync(state,{recursive:true});
+const dbPath=resolve(state,'preview.sqlite'),fresh=!existsSync(dbPath),DB=openDatabase(dbPath);if(fresh)DB.raw.exec(readFileSync(resolve(root,'db/001_poll.sql'),'utf8'));
+const mime={'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp'};
+const env={DB,POLL_ENABLED:'true',PREVIEW_MODE:'true',POLL_SECRET:'LOCAL-REVIEW-ONLY-NOT-A-PRODUCTION-SECRET',ASSETS:{async fetch(request){let path;try{path=resolve(publicDir,'.'+decodeURIComponent(new URL(request.url).pathname));}catch{return new Response('Bad path',{status:400});}if(path===publicDir)path=resolve(publicDir,'index.html');if(!path.startsWith(publicDir+'/'))return new Response('Not found',{status:404});try{return new Response(readFileSync(path),{headers:{'Content-Type':mime[extname(path)]||'application/octet-stream'}});}catch{return new Response('Not found',{status:404});}}}};
+const server=createServer(async(req,res)=>{try{const url=`http://127.0.0.1:4173${req.url}`;const request=new Request(url,{method:req.method,headers:req.headers,...(['GET','HEAD'].includes(req.method)?{}:{body:Readable.toWeb(req),duplex:'half'})});const response=await worker.fetch(request,env);res.writeHead(response.status,Object.fromEntries(response.headers));res.end(Buffer.from(await response.arrayBuffer()));}catch{res.writeHead(500);res.end('Preview request failed.');}});
+server.listen(4173,'127.0.0.1',()=>console.log('Local review: http://127.0.0.1:4173 — separate test database; no campaign submissions'));
+process.on('SIGINT',()=>server.close(()=>{DB.close();process.exit(0);}));
