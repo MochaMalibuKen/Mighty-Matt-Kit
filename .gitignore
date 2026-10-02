@@ -4,3 +4,8 @@
 .dev.vars
 build/
 qa/
+node_modules/
+.vercel/
+.env.*
+!.env.example
+.content-backups/
