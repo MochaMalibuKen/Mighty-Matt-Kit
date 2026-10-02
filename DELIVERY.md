@@ -1,6 +1,6 @@
 # Delivery status
 
-A local campaign microsite and persistent poll implementation are complete for review. Production launch is pending configuration and approval. No publication, domain/DNS change or final QR generation occurred.
+The campaign microsite, persistent poll implementation and repository-side Cloudflare launch configuration are ready for account setup. `vercel.json` remains a static-only deployment path. Cloudflare authentication is unavailable in the execution environment (`wrangler whoami`: not authenticated), so no Worker/D1 resources, production settings, domain/DNS changes or hosted-backend validation were performed in this task. No production response data was created.
 
 ## Verification completed
 
@@ -20,8 +20,18 @@ A local campaign microsite and persistent poll implementation are complete for r
 
 1. Approved GO product/payment destination for the existing Essentials workflow.
 2. Review of the edited GO image and final layout, including 200% text recheck.
-3. Approved hosting account, persistent database, runtime secrets, schema/binding integration and actual deployed-backend validation.
+3. Complete the account-side commands in [CLOUDFLARE-LAUNCH.md](CLOUDFLARE-LAUNCH.md): authenticate, create/select D1, replace its ID, apply the existing migration, deploy the configured Worker/assets, configure host settings/secrets, and verify the actual deployed backend. Repository binding/migration configuration is now supplied in `wrangler.jsonc`.
 4. Explicit publication and DNS approval.
 5. Confirm permanent-domain HTTPS resolution, then generate the production QR to https://mightymattkit.com.
 
 The standalone `review.html` opens without a server. Its poll can be browsed but cannot submit. The optional local server and production Worker provide the complete persistent workflow when configured. There are no fabricated live results.
+
+## October 1, 2026 backend launch preparation
+
+- Based on current `main` commit `75a8455`.
+- Added minimal Wrangler configuration for the existing Worker, `ASSETS`, `DB`, and `db` migrations. `run_worker_first` preserves API dispatch and Worker-applied static security headers; `keep_vars` preserves host-side settings.
+- Kept `POLL_SECRET`, `ADMIN_TOKEN`, `ALLOWED_ORIGIN`, `PREVIEW_MODE`, and `POLL_ENABLED` outside repository configuration.
+- Worker code, SQL migration, response schema, optional-contact separation, duplicate protection and aggregate-only results are unchanged. No campaign-source attribution added.
+- Re-ran `npm run build` and `npm test` with Node 24: build passed; 7 tests passed, 0 failed. The logged database failure is the intentional transaction rollback test. Earlier visual checks above were not repeated for this configuration-only change.
+- Wrangler 4.146.0 `deploy --dry-run` passed and reported both `DB` and `ASSETS` bindings. `d1 migrations apply DB --local` successfully applied the unchanged `001_poll.sql` to isolated local D1 storage; this is not a production migration.
+- Live status, submission/retry/duplicate and result validation remain explicitly pending. The launch runbook includes a same-origin test with one synthetic response and targeted cleanup before campaign collection.

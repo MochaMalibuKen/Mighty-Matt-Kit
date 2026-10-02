@@ -1,6 +1,6 @@
 # Mighty Matt agricultural campaign microsite
 
-Local implementation for review. Nothing has been published, DNS has not been changed, and no production QR has been generated.
+Campaign microsite with a Cloudflare Worker/D1 launch configuration. `vercel.json` publishes only the static `dist` site; it does not deploy the poll backend. Cloudflare deployment and live validation remain pending account authentication. See [CLOUDFLARE-LAUNCH.md](CLOUDFLARE-LAUNCH.md) for exact launch commands and verification.
 
 ## Review and build
 
@@ -50,16 +50,14 @@ A browser UUID is retained in localStorage and mirrored in an HttpOnly cookie. T
 
 Private contact data is stored separately with consent and timestamp. Open answers and other-location descriptions are private. Public results select only fixed-choice counts. Keep database/admin access restricted, choose a retention period and backup owner before collection, and process respondent questions via the verified ECS email.
 
-## Production setup, after explicit approval
+## Production launch with Cloudflare
 
-The smallest managed backend is one Cloudflare Worker plus D1 with same-origin static assets. The included Worker exports `fetch(request, env)` and accepts `ASSETS` and `DB` bindings. It can be integrated into Sites hosting or deployed through an approved Cloudflare account. No hosted project, credentials, database or domain binding has been created.
+`wrangler.jsonc` binds `dist` as `ASSETS`, `server/worker.js` as the Worker, and D1 as `DB`, using the existing `db/001_poll.sql` migration. All requests run through the Worker so API routing and its static-response security headers are preserved. `keep_vars` preserves host-managed plain-text settings on subsequent deploys; secrets also remain host-managed. No runtime setting values or credentials are embedded in the configuration.
 
-1. Confirm the GO payment/product URL and set `config.purchaseUrl`. The existing Essentials store is verified, but a GO-specific destination was not verified. Do not route GO buyers to an unrelated or full-kit SKU.
-2. Review the person-removal edit against the physical product. Current GO inventory remains unverified and is intentionally not listed.
-3. Choose the approved host/account. For Sites, register the local project only after approval and configure its logical D1 binding, asset bundle and schema migration using the installed Sites hosting workflow. The raw initial SQL is supplied for review; Sites-specific migration metadata and hosted binding configuration remain to be generated during that integration. Do not treat the current bundle as an already registered Sites deployment.
-4. Create persistent D1 storage and apply `db/001_poll.sql` once using the chosen host's migration system. Do not use local test data in production. Bind `DB` and `ASSETS`.
-5. Configure a strong random `POLL_SECRET` (at least 32 characters), optional separate `ADMIN_TOKEN` (at least 32 characters), `ALLOWED_ORIGIN=https://mightymattkit.com`, `PREVIEW_MODE=false`, and `POLL_ENABLED=true` only when collection is ready. Secrets belong in the host, never public files. Do not rotate the poll secret casually, since that changes duplicate-marker hashes.
-6. Run the build/tests, check public origin, HTTPS, mobile and desktop layouts, approved checkout and contact links; submit a clearly identified launch-test response and remove it through authenticated database administration before collecting real responses. Check retry/duplicate and aggregate behavior on the actual deployed backend.
-7. Publish and attach DNS only with explicit user approval. Confirm https://mightymattkit.com resolves to this deployed site. Only then generate the final printed QR to that permanent root URL.
+Follow [CLOUDFLARE-LAUNCH.md](CLOUDFLARE-LAUNCH.md). The only account-specific configuration placeholder is the real D1 database ID. This environment is not authenticated to Cloudflare; no Worker/D1 resource, production binding, secret, DNS change, or live test response was created by this change. Build and all seven existing backend tests pass locally.
+
+The browser uses relative `/api/*` URLs. Serve the campaign page and Worker on the same canonical HTTPS origin. Deploying the Worker at a separate URL while leaving the campaign solely on Vercel does not activate collection. The runbook covers the domain handoff and apex/`www` choice without changing `vercel.json` or DNS in this repository task.
+
+The remaining content approvals still apply: confirm the GO-specific purchase/payment destination (`config.purchaseUrl`), product-image fidelity, final layout including 200% text, retention period and backup owner. Generate or replace printed QR material only after validating the permanent campaign URL.
 
 Environment examples are in `.env.example`; the local preview intentionally uses isolated fixed review settings and does not load production secrets.
